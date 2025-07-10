@@ -10,20 +10,33 @@ function App() {
   ]);
   const [input, setInput] = useState("");
   const chatEndRef = useRef(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const newMessages = [...messages, { type: "user", text: input }];
-    setMessages(newMessages);
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    const userMessage = { type: "user", text: input };
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
-
-    // Simulate bot response
-    setTimeout(() => {
+    setLoading(true);
+    try {
+      const res = await fetch("https://echo5-chatbot-server-tj2u.onrender.com/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input }),
+      });
+      const data = await res.json();
       setMessages((prev) => [
         ...prev,
-        { type: "bot", text: "Thank you for your message!" },
+        { type: "bot", text: data.reply || "No response from server." },
       ]);
-    }, 1000);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { type: "bot", text: "Error connecting to server." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -87,10 +100,11 @@ function App() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 className="flex-1 border rounded-full px-4 py-1 text-sm focus:outline-none"
-                placeholder="Type your message..."
+                placeholder={loading ? "Waiting for response..." : "Type your message..."}
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                disabled={loading}
               />
-              <button onClick={handleSend} className="text-blue-500">
+              <button onClick={handleSend} className="text-blue-500" disabled={loading}>
                 <Send className="w-4 h-4" />
               </button>
             </div>
